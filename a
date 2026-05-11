@@ -130,3 +130,134 @@ int main()
     matrixChainOrder(p, n);
     return 0;
 }
+
+
+
+//server
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+#define PORT 25020
+#define BUFFER_SIZE 4096
+
+int main() {
+    int listenfd, connfd;
+    struct sockaddr_in serv_addr;
+    char buffer[BUFFER_SIZE], output[BUFFER_SIZE];
+
+    listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    int opt = 1;
+    setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(PORT);
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+
+    bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+    listen(listenfd, 5);
+    printf("Remote Command Server Running on Port %d...\n", PORT);
+
+    while(1) {
+        connfd = accept(listenfd, NULL, NULL);
+        printf("Client connected.\n");
+        
+        while(1) {
+            memset(buffer, 0, BUFFER_SIZE);
+            if (read(connfd, buffer, BUFFER_SIZE) <= 0) break;
+            if (strncmp(buffer, "exit", 4) == 0) break;
+
+            printf("Running command: %s\n", buffer);
+
+            // popen executes the command and opens a pipe to read output
+            FILE *fp = popen(buffer, "r");
+            if (fp == NULL) {
+                write(connfd, "TEXT:Error running command\n", 27);
+                continue;
+            }
+
+            memset(output, 0, BUFFER_SIZE);
+            char line[256];
+            int line_count = 0;
+            while (fgets(line, sizeof(line), fp)) {
+                strcat(output, line);
+                line_count++;
+            }
+            pclose(fp);
+
+            if (line_count <= 1) {
+                // Single line output
+                char res[BUFFER_SIZE + 10];
+                sprintf(res, "TEXT:%s", output);
+                write(connfd, res, strlen(res));
+            } else {
+                // Multi-line output: Write to file
+                FILE *file_ptr = fopen("cmd_output.txt", "w");
+                fprintf(file_ptr, "%s", output);
+                fclose(file_ptr);
+                
+                char res[BUFFER_SIZE + 30];
+                sprintf(res, "FILE:cmd_output.txt\n%s", output);
+                write(connfd, res, strlen(res));
+            }
+        }
+        close(connfd);
+        printf("Client disconnected. Waiting for new connection...\n");
+    }
+    return 0;
+}
+
+
+
+//client
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#define PORT 25020
+
+int main() {
+    int sockfd;
+    struct sockaddr_in serv_addr;
+    char buffer[4096];
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(PORT);
+    inet_aton("127.0.0.1", &serv_addr.sin_addr);
+
+    if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        perror("Connect failed");
+        return 1;
+    }
+    printf("Connected! Type commands (ls, pwd, date, etc) or 'exit'.\n");
+
+    while(1) {
+        printf("cmd> ");
+        fgets(buffer, 1024, stdin);
+        buffer[strcspn(buffer, "\n")] = 0;
+
+        write(sockfd, buffer, strlen(buffer));
+        if (strcmp(buffer, "exit") == 0) break;
+
+        memset(buffer, 0, 4096);
+        int r = read(sockfd, buffer, 4095);
+        if (r <= 0) break;
+
+        if (strncmp(buffer, "TEXT:", 5) == 0) {
+            printf("[Single Line Result]: %s", buffer + 5);
+        } else if (strncmp(buffer, "FILE:", 5) == 0) {
+            printf("[Multi-line Result - Saved on Server]:\n%s", buffer + 5);
+        }
+    }
+    close(sockfd);
+    return 0;
+}
+
