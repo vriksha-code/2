@@ -223,3 +223,196 @@ int main() {
 
     return 0;
 }
+
+
+------------------
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
+#define PORT 25020
+#define BUFFER_SIZE 1024
+
+int main() {
+
+    int sockfd;
+
+    struct sockaddr_in serverAddr, clientAddr;
+
+    socklen_t addr_size;
+
+    char buffer[BUFFER_SIZE];
+
+    // Create UDP socket
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(PORT);
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+
+    // Bind socket
+    bind(
+        sockfd,
+        (struct sockaddr*)&serverAddr,
+        sizeof(serverAddr)
+    );
+
+    printf(
+        "UDP Chat Server Running...\n"
+    );
+
+    addr_size = sizeof(clientAddr);
+
+    while(1) {
+
+        memset(buffer, 0, BUFFER_SIZE);
+
+        // Receive client message
+        recvfrom(
+            sockfd,
+            buffer,
+            BUFFER_SIZE,
+            0,
+            (struct sockaddr*)&clientAddr,
+            &addr_size
+        );
+
+        printf("\nClient : %s\n", buffer);
+
+        // If client exits
+        if(strcmp(buffer, "exit") == 0) {
+
+            printf(
+                "Client Disconnected\n"
+            );
+
+            // Continue waiting
+            continue;
+        }
+
+        // Server reply
+        printf("Server : ");
+
+        fgets(buffer, BUFFER_SIZE, stdin);
+
+        buffer[strcspn(buffer, "\n")] = 0;
+
+        // Send reply
+        sendto(
+            sockfd,
+            buffer,
+            strlen(buffer),
+            0,
+            (struct sockaddr*)&clientAddr,
+            addr_size
+        );
+
+        // Server exit
+        if(strcmp(buffer, "exit") == 0) {
+
+            printf(
+                "Server Closed\n"
+            );
+
+            break;
+        }
+    }
+
+    close(sockfd);
+
+    return 0;
+}
+------------
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
+#define PORT 25020
+#define BUFFER_SIZE 1024
+
+int main() {
+
+    int sockfd;
+
+    struct sockaddr_in serverAddr;
+
+    char buffer[BUFFER_SIZE];
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(PORT);
+
+    inet_aton(
+        "127.0.0.1",
+        &serverAddr.sin_addr
+    );
+
+    printf(
+        "UDP Chat Client Started...\n"
+    );
+
+    while(1) {
+
+        printf("\nClient : ");
+
+        fgets(buffer, BUFFER_SIZE, stdin);
+
+        buffer[strcspn(buffer, "\n")] = 0;
+
+        // Send message
+        sendto(
+            sockfd,
+            buffer,
+            strlen(buffer),
+            0,
+            (struct sockaddr*)&serverAddr,
+            sizeof(serverAddr)
+        );
+
+        // Client exit
+        if(strcmp(buffer, "exit") == 0) {
+
+            printf(
+                "Client Closed\n"
+            );
+
+            break;
+        }
+
+        memset(buffer, 0, BUFFER_SIZE);
+
+        // Receive reply
+        recvfrom(
+            sockfd,
+            buffer,
+            BUFFER_SIZE,
+            0,
+            NULL,
+            NULL
+        );
+
+        printf(
+            "Server : %s\n",
+            buffer
+        );
+
+        // Server exit
+        if(strcmp(buffer, "exit") == 0) {
+
+            printf(
+                "Server Closed\n"
+            );
+
+            break;
+        }
+    }
+
+    close(sockfd);
+
+    return 0;
+}
