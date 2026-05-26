@@ -1,6 +1,175 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define SIZE 4
+
+int table[SIZE][SIZE];
+int emptyRow, emptyCol;
+
+void displayTable() {
+    printf("\n");
+    for (int i = 0; i < SIZE; i++) {
+  
+        for (int j = 0; j < SIZE; j++) {
+            if (table[i][j] == 0)
+                printf("    ");
+            else
+                printf(" %2d ", table[i][j]);
+        }
+        printf("\n");
+    }
+   
+}
+
+
+void moveRight() {
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            if (table[i][j] == 0 && j > 0) {
+                table[i][j] = table[i][j-1];
+                table[i][j-1] = 0;
+                emptyRow = i;
+                emptyCol = j-1;
+                return;
+            }
+        }
+    }
+}
+
+
+void moveLeft() {
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            if (table[i][j] == 0 && j < SIZE-1) {
+                table[i][j] = table[i][j+1];
+                table[i][j+1] = 0;
+                emptyRow = i;
+                emptyCol = j+1;
+                return;
+            }
+        }
+    }
+}
+
+
+void moveUp() {
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            if (table[i][j] == 0 && i < SIZE-1) {
+                table[i][j] = table[i+1][j];
+                table[i+1][j] = 0;
+                emptyRow = i+1;
+                emptyCol = j;
+                return;
+            }
+        }
+    }
+}
+
+
+void moveDown() {
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            if (table[i][j] == 0 && i > 0) {
+                table[i][j] = table[i-1][j];
+                table[i-1][j] = 0;
+                emptyRow = i-1;
+                emptyCol = j;
+                return;
+            }
+        }
+    }
+}
+
+int isSolved() {
+    int expected = 1;
+    for (int i = 0; i < SIZE; i++)
+        for (int j = 0; j < SIZE; j++) {
+            if (i == SIZE-1 && j == SIZE-1) {
+                if (table[i][j] != 0) return 0;
+            } else {
+                if (table[i][j] != expected++) return 0;
+            }
+        }
+    return 1;
+}
+
+
+void findEmpty() {
+    for (int i = 0; i < SIZE; i++)
+        for (int j = 0; j < SIZE; j++)
+            if (table[i][j] == 0) {
+                emptyRow = i;
+                emptyCol = j;
+            }
+}
+
+
+void moveBlankTo(int targetRow, int targetCol) {
+    findEmpty();
+    while (emptyRow != targetRow || emptyCol != targetCol) {
+        if (emptyRow < targetRow) {
+            moveUp();   
+            printf("Move blank DOWN:\n");
+        } else if (emptyRow > targetRow) {
+            moveDown(); 
+            printf("Move blank UP:\n");
+        } else if (emptyCol < targetCol) {
+            moveRight(); 
+            printf("Move blank RIGHT:\n");
+        } else if (emptyCol > targetCol) {
+            moveLeft();  
+            printf("Move blank LEFT:\n");
+        }
+        displayTable();
+        findEmpty();
+    }
+}
+
+int main() {
+   
+    int initial[SIZE][SIZE] = {
+        { 1,  2,  3,  4},
+        { 5,  6,  0,  8},
+        { 9, 10,  7, 11},
+        {13, 14, 15, 12}
+    };
+
+    memcpy(table, initial, sizeof(table));
+
+    printf("Initial State:\n");
+    displayTable();
+
+    
+    printf("\nStep 1: Move blank DOWN (7 slides up):\n");
+    moveUp();
+    displayTable();
+
+    printf("\nStep 2: Move blank RIGHT (11 slides left):\n");
+    moveLeft();
+    displayTable();
+
+
+    printf("\nStep 3: Move blank DOWN (12 slides up):\n");
+    moveUp();
+    displayTable();
+
+   
+    printf("\nFinal Solved State:\n");
+    displayTable();
+
+    if (isSolved())
+        printf("\nPuzzle Solved Successfully!\n");
+    else
+        printf("\nPuzzle not fully solved with these steps.\n");
+
+    return 0;
+}
+--------------------
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 
