@@ -120,251 +120,160 @@ int main() {
     */
 
 //Transaction -----------------------------------------------------------
-
-/*
-#include <stdio.h>
-
-int main()
-{
-    int n;
-
-    printf("Enter the number of users: ");
-    scanf("%d", &n);
-
-    int userId[n];
-    int startTime[n];
-    int numTransactions[n];
-
-    int durations[n][100];
-
-    for(int i = 0; i < n; i++)
-    {
-        printf("\nEnter data for User %d\n", i + 1);
-
-        printf("Enter user ID: ");
-        scanf("%d", &userId[i]);
-
-        printf("Enter starting time: ");
-        scanf("%d", &startTime[i]);
-
-        printf("Enter the number of transactions: ");
-        scanf("%d", &numTransactions[i]);
-
-        printf("Enter the durations of the transactions: ");
-
-        for(int j = 0; j < numTransactions[i]; j++)
-        {
-            scanf("%d", &durations[i][j]);
-        }
-    }
-
-    int currentTime = 0;
-    int totalWaitingTime = 0;
-    int totalTransactions = 0;
-
-    for(int i = 0; i < n; i++)
-    {
-        int requestTime = startTime[i];
-
-        for(int j = 0; j < numTransactions[i]; j++)
-        {
-            if(currentTime < requestTime)
-            {
-                currentTime = requestTime;
-            }
-            int waitingTime = currentTime - requestTime;
-            int transactionStart = currentTime;
-            int transactionEnd = transactionStart + durations[i][j];
-
-            printf("\nUser %d Transaction %d\n", userId[i], j + 1);
-            printf("Start time: %d\n", transactionStart);
-            printf("End time: %d\n", transactionEnd);
-            printf("Waiting time: %d - %d = %d seconds\n",
-                   transactionStart, requestTime, waitingTime);
-
-            totalWaitingTime += waitingTime;
-            totalTransactions++;
-
-            currentTime = transactionEnd;
-            requestTime = transactionEnd;
-        }
-    }
-
-    float averageWaitingTime = (float)totalWaitingTime / totalTransactions;
-
-    printf("\nAverage waiting time: %.2f seconds\n", averageWaitingTime);
-
-    return 0;
-}
-    */
-
-
-
-/*
-//Polisher------------------------------------------------------------------
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
 
-#define N_PI 3.1415
-#define NUM_WORKERS 10
+#define WORKERS 10
+#define ITEMS 1000
 
-double uniform_random(double min, double max) {
-    return min + ((double)rand() / RAND_MAX) * (max - min);
+
+double uniform_random(double min, double max)
+{
+    return min +
+           ((double)rand() / RAND_MAX) *
+           (max - min);
 }
 
-double normal_random(double mean, double stddev) {
-    double u1 = ((double)rand() + 1.0) / ((double)RAND_MAX + 1.0);
-    double u2 = ((double)rand() + 1.0) / ((double)RAND_MAX + 1.0);
-    double z  = sqrt(-2.0 * log(u1)) * cos(2.0 * N_PI * u2);
+
+double normal_random(double mean, double stddev)
+{
+    double u1, u2, z;
+
+    u1 = ((double)rand() + 1.0) /
+         ((double)RAND_MAX + 1.0);
+
+    u2 = ((double)rand() + 1.0) /
+         ((double)RAND_MAX + 1.0);
+
+    z = sqrt(-2.0 * log(u1)) *
+        cos(2.0 * M_PI * u2);
+
     return mean + stddev * z;
 }
 
-double gen_polish_time() {
-    double t;
-    do {
-        t = normal_random(20.0, 7.0);
-    } while (t < 5.0);
-    return t;
-}
 
-typedef struct {
-    double time;
-    int    type;    
-    int    worker;
-} Event;
+void simulate(int machines)
+{
+  
+    double machineFree[machines];
+
+  
+    double workerFree[WORKERS];
 
 
-Event* events = NULL;      
-int    event_count = 0;
-
-void schedule_event(double time, int type, int worker) {
-    events[event_count].time   = time;
-    events[event_count].type   = type;
-    events[event_count].worker = worker;
-    event_count++;
-}
-
-void simulate(int M, int total_items_to_sim) {
-    double current_time = 0.0;
-
-    int* machine_busy = (int*)calloc(M, sizeof(int));
-    int* machine_worker = (int*)malloc(M * sizeof(int));
-   
-    int    queue[NUM_WORKERS + 1];            
-    int    q_front = 0, q_rear = 0;  
-
-    double wait_start[NUM_WORKERS];      
-    double item_polish_time[NUM_WORKERS];
-
-    double total_wait_time = 0.0;
-    int    total_items = 0;
-
-    event_count = 0;
-   
- 
-    events = (Event*)malloc(NUM_WORKERS * 2 * sizeof(Event));
-
-    for (int i = 0; i < NUM_WORKERS; i++) {
-        double assembly_time = uniform_random(100.0, 300.0);
-        schedule_event(assembly_time, 0, i);
+    for(int i = 0; i < machines; i++)
+    {
+        machineFree[i] = 0;
     }
 
-    while (total_items < total_items_to_sim) {
-        int min_idx = 0;
-        for (int i = 1; i < event_count; i++) {
-            if (events[i].time < events[min_idx].time)
-                min_idx = i;
+
+    for(int i = 0; i < WORKERS; i++)
+    {
+        workerFree[i] = 0;
+    }
+
+    double totalWaiting = 0;
+
+
+    for(int item = 0; item < ITEMS; item++)
+    {
+        
+        int worker = item % WORKERS;
+
+     
+        double assemblyTime =
+            uniform_random(100, 300);
+
+     
+        double assemblyFinish =
+            workerFree[worker] + assemblyTime;
+
+      
+        double polishingTime;
+
+        do
+        {
+            polishingTime =
+                normal_random(20, 7);
+
+        } while(polishingTime < 5);
+
+
+        int selectedMachine = 0;
+
+        for(int i = 1; i < machines; i++)
+        {
+            if(machineFree[i] <
+               machineFree[selectedMachine])
+            {
+                selectedMachine = i;
+            }
         }
 
-        double ev_time   = events[min_idx].time;
-        int    ev_type   = events[min_idx].type;
-        int    ev_worker = events[min_idx].worker;
+      
+        double polishingStart;
 
-        events[min_idx] = events[event_count - 1];
-        event_count--;
+        if(machineFree[selectedMachine] >
+           assemblyFinish)
+        {
+            polishingStart =
+                machineFree[selectedMachine];
+        }
+        else
+        {
+            polishingStart =
+                assemblyFinish;
+        }
 
-        current_time = ev_time;
+     
+        double waiting =
+            polishingStart - assemblyFinish;
 
-        if (ev_type == 0) {  
-            double pt = gen_polish_time();
-            item_polish_time[ev_worker] = pt;
+        totalWaiting += waiting;
 
-            int idle = -1;
-            for (int m = 0; m < M; m++) {
-                if (machine_busy[m] == 0) {
-                    idle = m;
-                    break;
-                }
-            }
+      
+        double polishingEnd =
+            polishingStart + polishingTime;
 
-            if (idle != -1) {
-                machine_busy[idle] = 1;
-                machine_worker[idle] = ev_worker;
-                schedule_event(current_time + pt, 1, ev_worker);
-            } else {
-                queue[q_rear] = ev_worker;
-                q_rear = (q_rear + 1) % (NUM_WORKERS + 1);
-                wait_start[ev_worker] = current_time;
-            }
-        } else {              
-            int m;
-            for (m = 0; m < M; m++) {
-                if (machine_busy[m] && machine_worker[m] == ev_worker)
-                    break;
-            }
        
-            machine_busy[m] = 0;
-            total_items++;
-            double assembly_time = uniform_random(100.0, 300.0);
-            schedule_event(current_time + assembly_time, 0, ev_worker);
+        machineFree[selectedMachine] =
+            polishingEnd;
 
-            if (q_front != q_rear) {
-                int w = queue[q_front];
-                q_front = (q_front + 1) % (NUM_WORKERS + 1);
-
-                double wait = current_time - wait_start[w];
-                total_wait_time += wait;
-
-                machine_busy[m] = 1;
-                machine_worker[m] = w;
-
-                schedule_event(current_time + item_polish_time[w], 1, w);
-            }
-        }
+  
+        workerFree[worker] =
+            polishingEnd;
     }
 
-    double avg_wait = total_wait_time / total_items;
-    printf("\n--- Simulation Results ---\n");
-    printf("Average waiting time per item with %d polishing machine(s): %.2f seconds\n",
-           M, avg_wait);
 
-    free(machine_busy);
-    free(machine_worker);
-    free(events);
+    double average =
+        totalWaiting / ITEMS;
+
+    printf("\nMachines : %d\n", machines);
+
+    printf("Average Waiting Time : %.2lf seconds\n",
+           average);
 }
 
-int main() {
-    int num_machines;
-    int num_items;
+int main()
+{
+   
+    srand(time(NULL));
 
-    srand((unsigned)time(NULL));
-   
-    printf("Enter the number of Items to Simulate: ");
-    if (scanf("%d", &num_items) != 1) return 1;
+    printf("Factory Simulation\n");
 
-    printf("Enter the number of Machines to Simulate: ");
-    if (scanf("%d", &num_machines) != 1) return 1;
-   
-    simulate(num_machines, num_items);
-   
+    
+    simulate(1);
+
+  
+    simulate(2);
+
+    
+    simulate(3);
+
     return 0;
 }
-*/
-
-/*
 // Soldiers-------------------------------------------------------------------------
 
 
